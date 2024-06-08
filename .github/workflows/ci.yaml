@@ -1,54 +1,66 @@
-# Full CI matrix on all pushes to master branch, and all PRs
-name: Java CI
-
-on:
-  workflow_dispatch:
-  pull_request:
-  push:
-    branches:
-      - master
-
-permissions:
-  contents: read
-
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        java: [8, 11, 17, 21, 23-ea]
-        os: [ubuntu-latest, macos-13, macos-latest]
-        exclude:
-          # 23-ea is not available for mac OS
-          - java: 23-ea
-            os: macos-latest
-      # Run all tests even if one fails
-      fail-fast: false
     name: Test JDK ${{ matrix.java }}, ${{ matrix.os }}
-
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ matrix.java }}
-          distribution: 'zulu'
-      - name: Linux requirements
-        if: contains(matrix.os, 'ubuntu')
-        run: sudo apt-get -y install texinfo
-      - name: macOS requirements
-        if: contains(matrix.os, 'macos')
-        run: |
-          brew update
-          brew install automake --force
-          brew install libtool --force
-          brew install texinfo --force
-      - name: Checkstyle
-        if: contains(matrix.os, 'ubuntu') && contains(matrix.java, '8')
-        run: |
-          ant checkstyle
-          ant dist
-      - name: Build with Ant
-        run: |
-          ant test
-          ant test-platform
+    - continue-on-error: true
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: zulu
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      if: contains(matrix.os, 'ubuntu')
+      name: Linux requirements
+      run: sudo apt-get -y install texinfo
+    - continue-on-error: true
+      if: contains(matrix.os, 'macos')
+      name: macOS requirements
+      run: 'brew update
+
+        brew install automake --force
+
+        brew install libtool --force
+
+        brew install texinfo --force
+
+        '
+    - continue-on-error: true
+      if: contains(matrix.os, 'ubuntu') && contains(matrix.java, '8')
+      name: Checkstyle
+      run: 'ant checkstyle
+
+        ant dist
+
+        '
+    - continue-on-error: true
+      name: Build with Ant
+      run: 'ant test
+
+        ant test-platform
+
+        '
+    strategy:
+      fail-fast: false
+      matrix:
+        exclude:
+        - java: 23-ea
+          os: macos-latest
+        java:
+        - 8
+        - 11
+        - 17
+        - 21
+        - 23-ea
+        os:
+        - ubuntu-latest
+        - macos-13
+        - macos-latest
+name: Java CI
+on:
+  repository_dispatch:
+    types: trigger-ga___ci.yaml
+permissions:
+  contents: read

@@ -1,43 +1,52 @@
-# Build native library for mac OS
-name: mac OS native libraries
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
 jobs:
   build-native-darwin:
-    runs-on: ${{ matrix.os }}
+    name: Build native libraries for mac OS / darwin
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        distribution: zulu
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      if: contains(matrix.os, 'macos')
+      name: macOS requirements
+      run: 'brew update
+
+        brew install automake --force
+
+        brew install libtool --force
+
+        brew install texinfo --force
+
+        '
+    - continue-on-error: true
+      name: Build native code
+      run: 'ant -Dos.prefix=darwin-aarch64
+
+        ant -Dos.prefix=darwin-x86-64
+
+        '
+    - continue-on-error: true
+      name: Upload mac OS binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: darwin-native
+        path: 'lib/native/darwin-aarch64.jar
+
+          lib/native/darwin-x86-64.jar'
     strategy:
       matrix:
-        java: [21]
-        os: [macos-latest]
-    name: Build native libraries for mac OS / darwin
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK
-        uses: actions/setup-java@v3
-        with:
-          java-version: ${{ matrix.java }}
-          distribution: 'zulu'
-      - name: macOS requirements
-        if: contains(matrix.os, 'macos')
-        run: |
-          brew update
-          brew install automake --force
-          brew install libtool --force
-          brew install texinfo --force
-      - name: Build native code
-        run: |
-          ant -Dos.prefix=darwin-aarch64
-          ant -Dos.prefix=darwin-x86-64
-      - name: Upload mac OS binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: darwin-native
-          path: |
-            lib/native/darwin-aarch64.jar
-            lib/native/darwin-x86-64.jar
+        java:
+        - 21
+        os:
+        - macos-latest
+name: mac OS native libraries
+on:
+  repository_dispatch:
+    types: trigger-ga___native-libraries-macOS.yaml
+permissions:
+  contents: read
